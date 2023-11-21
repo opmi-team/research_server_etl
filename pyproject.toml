@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "research_etl"
+version = "0.1.0"
+description = "OPMI Research Server ETL Jobs"
+authors = ["Ryan Rymarczyk <rymarczy@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+polars = "^0.19.15"
+SQLAlchemy = "^2.0.23"
+psycopg2 = "^2.9.9"
+boto3 = "^1.29.4"
+pandas = "^2.1.3"
+pyarrow = "^14.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.26.0"
+black = "^23.11.0"
+pylint = "^3.0.2"
+mypy = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.mypy]
+disallow_untyped_defs = true
+ignore_missing_imports = true
+pretty = true
+python_version = 3.11
+warn_unreachable = true
+warn_unused_ignores = true
+
+[tool.pylint]
+disable = [
+  # disable doc string requirements
+  "missing-module-docstring",
+  # allow catching a generic exception
+  "broad-except",
+  # we're logging everything so its "ok"
+  "lost-exception",
+  # caught by black
+  "line-too-long",
+]
+good-names = ["e", "i", "s"]
+max-line-length = 120
+min-similarity-lines = 10
+# https://github.com/PyCQA/pylint/issues/7090
+ignored-classes = ['sqlalchemy.orm.session.sessionmaker']

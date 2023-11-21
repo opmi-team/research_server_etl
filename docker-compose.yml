@@ -1,0 +1,30 @@
+version: '3.1'
+
+services:
+
+  research_local_rds:
+    container_name: research_local_rds
+    image: postgis/postgis:15-3.4
+    shm_size: '1gb'
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - 5432:5432
+    volumes:
+      - ./tests/files/init_schema.sql:/docker-entrypoint-initdb.d/gtfs.sql
+
+  research_etl:
+    container_name: research_etl
+    env_file: .env
+    build:
+      context: .
+    depends_on:
+      - research_local_rds 
+    working_dir: /research_server_etl 
+    # command: ["poetry", "run", "start"] # update
+    command: ["poetry", "run", "python", "src/research_etl/etl-gtfs/job.py"]
+
