@@ -1,10 +1,13 @@
-import polars
-from dataclasses import dataclass, field
 from typing import Dict, Any, List
+from dataclasses import dataclass, field
+
+import polars
 
 
 @dataclass
 class GTFSSchema:
+    """describe GTFS tables"""
+
     table_name: str
     schema: Dict[str, Any]
     primary_keys: List[str]

@@ -458,6 +458,141 @@ ALTER TABLE ONLY gtfs.trips
 -- END INIT GTFS SCHEMA --
 -- ****************************************** --
 
+-- ****************************************** --
+-- CREATE INIT ODX2 SCHEMA --
+-- ****************************************** --
+
+CREATE SCHEMA odx2;
+
+CREATE TABLE odx2.fleet (
+    fleet_key smallint NOT NULL,
+    fleet_name text NOT NULL,
+    operator_id text NOT NULL
+);
+
+CREATE TABLE odx2.od_code (
+    od_code smallint NOT NULL,
+    od_code_name text,
+    od_code_desc text
+);
+
+CREATE TABLE odx2.pattern (
+    pattern_id text NOT NULL,
+    route_id text NOT NULL,
+    gtfs_dir smallint,
+    dir_id text,
+    pattern_name text,
+    in_service boolean,
+    CONSTRAINT pattern_gtfs_dir_check CHECK ((gtfs_dir = ANY (ARRAY[0, 1])))
+);
+
+CREATE TABLE odx2.pattern_flow (
+    svc_date date NOT NULL,
+    pattern_id text NOT NULL,
+    hhr interval NOT NULL,
+    trip_hhr interval NOT NULL,
+    stop_seq smallint NOT NULL,
+    ons real,
+    offs real,
+    flow_out real,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.pattern_stop (
+    pattern_id text NOT NULL,
+    stop_seq integer NOT NULL,
+    stop_id text NOT NULL,
+    meters double precision
+);
+
+CREATE TABLE odx2.ride (
+    stage_key bigint NOT NULL,
+    ride_seq smallint NOT NULL,
+    svc_date date NOT NULL,
+    start_visit_key bigint,
+    end_visit_key bigint,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.stage (
+    stage_key bigint NOT NULL,
+    svc_date date NOT NULL,
+    card text,
+    jny_seq smallint NOT NULL,
+    stage_seq smallint NOT NULL,
+    origin text,
+    destination text,
+    o_time timestamp with time zone,
+    d_time timestamp with time zone,
+    num_riders smallint NOT NULL,
+    o_txn_key bigint,
+    d_txn_key bigint,
+    o_code smallint NOT NULL,
+    d_code smallint NOT NULL,
+    x_code smallint NOT NULL,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.trip (
+    trip_key bigint NOT NULL,
+    svc_date date NOT NULL,
+    vehicle_day_key bigint NOT NULL,
+    in_service boolean,
+    trip_id text,
+    sched_trip text,
+    num_visits integer NOT NULL,
+    route_id text,
+    dir_id text,
+    pattern_id text,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.vehicle_day (
+    vehicle_day_key bigint NOT NULL,
+    svc_date date NOT NULL,
+    vehicle_id text,
+    fleet_key smallint NOT NULL,
+    num_cars smallint,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.visit (
+    visit_key bigint NOT NULL,
+    svc_date date NOT NULL,
+    vehicle_day_key bigint NOT NULL,
+    seq_in_day integer NOT NULL,
+    arrival timestamp with time zone,
+    door_open timestamp with time zone,
+    door_close timestamp with time zone,
+    departure timestamp with time zone,
+    trip_key bigint NOT NULL,
+    seq_in_trip integer NOT NULL,
+    seq_in_pattern integer,
+    scheduled boolean,
+    stop_id text,
+    lat double precision,
+    lon double precision,
+    ons real,
+    offs real,
+    load_out real,
+    apc_ons real,
+    apc_offs real,
+    apc_load_out real,
+    insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.xfer_code (
+    xfer_code smallint NOT NULL,
+    xfer_code_name text,
+    xfer_code_desc text
+);
+
+-- ****************************************** --
+-- END INIT ODX2 SCHEMA --
+-- ****************************************** --
+
+
+
 
 -- Completed on 2023-10-03 12:47:44 EDT
 

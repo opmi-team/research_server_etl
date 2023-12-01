@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED 1
 
 # Install non python dependencies
 RUN apt-get update
-RUN apt-get install -y libpq-dev gcc curl postgresql-client
+RUN apt-get install -y libpq-dev gcc curl gzip zip postgresql-client
 
 # Fetch Amazon RDS certificate chain
 RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /usr/local/share/amazon-certs.pem

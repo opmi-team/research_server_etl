@@ -1,15 +1,14 @@
 import os
 import gzip
+import zipfile
 import platform
 import subprocess
 import urllib.parse as urlparse
 from typing import Any, Dict, List, Tuple, Union
 
-import polars
 import boto3
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import DeclarativeBase
 
 from research_etl.utils.util_logging import ProcessLogger
 
@@ -203,21 +202,6 @@ class DatabaseManager:
 
         self.session = sessionmaker(bind=self.engine)
 
-    def _get_schema_table(self, table: Any) -> sa.sql.schema.Table:
-        if isinstance(table, sa.sql.schema.Table):
-            return table
-        if isinstance(
-            table,
-            (
-                sa.orm.decl_api.DeclarativeMeta,
-                sa.orm.decl_api.DeclarativeAttributeIntercept,
-            ),
-        ):
-            # mypy error: "DeclarativeMeta" has no attribute "__table__"
-            return table.__table__  # type: ignore
-
-        raise TypeError(f"can not pull schema table from {type(table)} type")
-
     def get_session(self) -> sessionmaker:
         """
         get db session for performing actions
@@ -241,18 +225,6 @@ class DatabaseManager:
             result = cursor.execute(statement)
         return result  # type: ignore
 
-    def insert_dataframe(self, dataframe: polars.DataFrame, insert_table: Any) -> None:
-        """
-        insert data into db table from polars dataframe
-        """
-        insert_as = self._get_schema_table(insert_table)
-
-        with self.session.begin() as cursor:
-            cursor.execute(
-                sa.insert(insert_as),
-                dataframe.to_dicts(),
-            )
-
     def select_as_list(self, select_query: sa.sql.selectable.Select) -> Union[List[Any], List[Dict[str, Any]]]:
         """
         select data from db table and return list
@@ -260,17 +232,15 @@ class DatabaseManager:
         with self.session.begin() as cursor:
             return [row._asdict() for row in cursor.execute(select_query)]
 
-    def vaccuum_analyze(self, table: Any) -> None:
+    def vaccuum_analyze(self, table: str) -> None:
         """RUN VACUUM (ANALYZE) on table"""
-        table_as = self._get_schema_table(table)
-
         with self.session.begin() as cursor:
             cursor.execute(sa.text("END TRANSACTION;"))
-            cursor.execute(sa.text(f"VACUUM (ANALYZE) {table_as};"))
+            cursor.execute(sa.text(f"VACUUM (ANALYZE) {table};"))
 
     def truncate_table(
         self,
-        table_to_truncate: Any,
+        table_to_truncate: str,
         restart_identity: bool = False,
         cascade: bool = False,
     ) -> None:
@@ -280,9 +250,7 @@ class DatabaseManager:
         restart_identity: Automatically restart sequences owned by columns of the truncated table(s).
         cascade: Automatically truncate all tables that have foreign-key references to any of the named tables, or to any tables added to the group due to CASCADE.
         """
-        truncat_as = self._get_schema_table(table_to_truncate)
-
-        truncate_query = f"TRUNCATE {truncat_as}"
+        truncate_query = f"TRUNCATE {table_to_truncate}"
 
         if restart_identity:
             truncate_query = f"{truncate_query} RESTART IDENTITY"
@@ -296,17 +264,21 @@ class DatabaseManager:
         self.vaccuum_analyze(table_to_truncate)
 
 
-def copy_local_to_db(local_path: str, destination_table: DeclarativeBase) -> None:
+def copy_gzip_csv_to_db(local_path: str, destination_table: str) -> None:
     """
-    Load local file into DB using psql COPY command
+    load local csv.gzip file into DB using psql COPY command
+
+    table headers are required to be in first row of file
+
     will throw if psql command does not exit with code 0
 
     :param local_path: path to local file that will be loaded
-    :param destination_table: SQLAlchemy table object for COPY destination
+    :param destination_table: table name for COPY destination
     """
     copy_log = ProcessLogger(
-        "psql_copy",
-        destination_table=str(destination_table.__table__),
+        "gzip_psql_copy",
+        local_file=local_path,
+        destination_table=destination_table,
     )
     copy_log.log_start()
 
@@ -314,10 +286,57 @@ def copy_local_to_db(local_path: str, destination_table: DeclarativeBase) -> Non
         local_columns = gzip_file.readline().strip().lower().split(",")
 
     copy_command = (
-        f"\\COPY {destination_table.__table__} "
+        f"\\COPY {destination_table} "
         f"({','.join(local_columns)}) "
         "FROM PROGRAM "
         f"'gzip -dc {local_path}' "
+        "WITH CSV HEADER"
+    )
+
+    psql = [
+        "psql",
+        f"postgresql://{create_db_connection_string()}",
+        "-c",
+        f"{copy_command}",
+    ]
+
+    process_result = subprocess.run(psql, check=True)
+
+    copy_log.add_metadata(exit_code=process_result.returncode)
+    copy_log.log_complete()
+
+
+def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
+    """
+    load local csv.zip file into DB using psql COPY command
+
+    table headers are required to be in first row of file
+    file to load inside of zip archive should be same name as local path
+    file without .zip
+
+    will throw if psql command does not exit with code 0
+
+    :param local_path: path to local file that will be loaded
+    :param destination_table: table name for COPY destination
+    """
+    copy_log = ProcessLogger(
+        "zip_psql_copy",
+        local_file=local_path,
+        destination_table=destination_table,
+    )
+    copy_log.log_start()
+
+    csv_file = local_path.split("/")[-1].replace(".zip", "")
+
+    with zipfile.ZipFile(local_path, "r") as zip_files:
+        with zip_files.open(csv_file, "r") as reader:
+            headers = reader.readline().decode().strip().lower().split(",")
+
+    copy_command = (
+        f"\\COPY {destination_table} "
+        f"({','.join(headers)}) "
+        "FROM PROGRAM "
+        f"'unzip -p {local_path}' "
         "WITH CSV HEADER"
     )
 

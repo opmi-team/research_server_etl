@@ -14,27 +14,28 @@ from research_etl.utils.util_rds import DatabaseManager
 from research_etl.utils.util_rds import create_db_connection_string
 from research_etl.utils.util_logging import ProcessLogger
 
-from gtfs_schema import GTFSSchema
-from gtfs_schema import feed_info_schema
-from gtfs_schema import agency_schema
-from gtfs_schema import calendar_schema
-from gtfs_schema import calendar_attributes_schema
-from gtfs_schema import calendar_dates_schema
-from gtfs_schema import checkpoints_schema
-from gtfs_schema import directions_schema
-from gtfs_schema import facilities_schema
-from gtfs_schema import facilities_properties_schema
-from gtfs_schema import levels_schema
-from gtfs_schema import lines_schema
-from gtfs_schema import multi_route_trips_schema
-from gtfs_schema import pathways_schema
-from gtfs_schema import route_patterns_schema
-from gtfs_schema import routes_schema
-from gtfs_schema import shapes_schema
-from gtfs_schema import stop_times_schema
-from gtfs_schema import stops_schema
-from gtfs_schema import transfers_schema
-from gtfs_schema import trips_schema
+from .gtfs_schema import GTFSSchema
+from .gtfs_schema import feed_info_schema
+from .gtfs_schema import agency_schema
+from .gtfs_schema import calendar_schema
+from .gtfs_schema import calendar_attributes_schema
+from .gtfs_schema import calendar_dates_schema
+from .gtfs_schema import checkpoints_schema
+from .gtfs_schema import directions_schema
+from .gtfs_schema import facilities_schema
+from .gtfs_schema import facilities_properties_schema
+from .gtfs_schema import levels_schema
+from .gtfs_schema import lines_schema
+from .gtfs_schema import multi_route_trips_schema
+from .gtfs_schema import pathways_schema
+from .gtfs_schema import route_patterns_schema
+from .gtfs_schema import routes_schema
+from .gtfs_schema import shapes_schema
+from .gtfs_schema import stop_times_schema
+from .gtfs_schema import stops_schema
+from .gtfs_schema import transfers_schema
+from .gtfs_schema import trips_schema
+
 
 DB_GTFS_SCHEMA = "gtfs"
 
@@ -168,9 +169,9 @@ def download_gtfs() -> Tuple[BytesIO, HTTPMessage]:
         BytesIO: GTFS Zip file as Bytes object in memory
         HTTPMessage: HTTP Header from GTFS Zip download
     """
-    GTFS_URL = "https://cdn.mbta.com/MBTA_GTFS.zip"
+    gtfs_url = "https://cdn.mbta.com/MBTA_GTFS.zip"
 
-    with urllib.request.urlopen(GTFS_URL) as req:
+    with urllib.request.urlopen(gtfs_url) as req:
         gtfs_headers = req.headers
         gtfs_bytes = BytesIO(req.read())
 
@@ -193,7 +194,7 @@ def last_feed_version(db_manager: DatabaseManager) -> str:
 
     if result:
         return db_manager.select_as_list(sa.text(query))[0]["feed_version"]
-    
+
     return None
 
 
@@ -469,7 +470,12 @@ def build_stops_in_pattern(
 
 def run() -> None:
     """
-    Main job event loop
+    main job event loop
+
+    pull the most recent available GTFS schedule and compare feed_version to
+    most recent feed version in research server
+
+    if feed_version's do not match, load GTFS schedule
     """
     process_logger = ProcessLogger("etl_gtfs")
     process_logger.log_start()
@@ -512,6 +518,7 @@ def run() -> None:
             )
 
         # build postgis tables from GTFS data
+        # these were pulled from original ETL code on MIT Research Server
         build_shapes_geog(db_manager, valid_start_date, valid_end_date)
         build_stops_geog(db_manager, valid_start_date, valid_end_date)
         build_stops_in_pattern(db_manager, valid_start_date, valid_end_date)
