@@ -20,11 +20,16 @@ services:
   research_etl:
     container_name: research_etl
     env_file: .env
+    environment:
+      KORBATO_SSHKEY: |-
+        -----BEGIN RSA PRIVATE KEY-----
+        -----END RSA PRIVATE KEY-----
     build:
       context: .
     depends_on:
       - research_local_rds 
+    volumes:
+      - ~/.aws:/root/.aws:ro  # map credentials to be used by boto3, read-only
     working_dir: /research_server_etl 
-    # command: ["poetry", "run", "start"] # update
-    command: ["poetry", "run", "python", "src/research_etl/etl-gtfs/job.py"]
-
+    command: ["poetry", "run", "run_etl_jobs"]
+    
