@@ -592,7 +592,346 @@ CREATE TABLE odx2.xfer_code (
 -- ****************************************** --
 
 
+-- ****************************************** --
+-- CREATE INIT AFC SCHEMA --
+-- ****************************************** --
 
+CREATE SCHEMA afc;
+
+CREATE TABLE afc.faregate (
+    trxtime timestamp without time zone,
+    servicedate date,
+    deviceclassid smallint,
+    deviceid integer,
+    uniquemsid integer,
+    eventsequno integer,
+    tariffversion smallint, 
+    tarifflocationid smallint,
+    unplanned boolean,
+    eventcode integer,
+    inserted timestamp without time zone
+) PARTITION BY RANGE (servicedate);
+
+CREATE INDEX ON afc.faregate (servicedate);
+
+CREATE TABLE afc.ridership (
+    deviceclassid smallint,
+    deviceid integer,
+    uniquemsid integer,
+    salestransactionno integer,
+    sequenceno integer,
+    trxtime timestamp without time zone,
+    servicedate date, 
+    branchlineid integer,
+    fareoptamount integer,
+    tariffversion smallint, 
+    articleno integer,
+    card character varying(50),
+    ticketstocktype smallint,
+    tvmtarifflocationid integer,
+    movementtype smallint,
+    bookcanc smallint,
+    correctioncounter bit(1),
+    correctionflag bit(1) DEFAULT 0::bit NOT NULL,
+    tempbooking bit(1) NOT NULL,
+    testsaleflag bit(1),
+    inserted timestamp without time zone
+) PARTITION BY RANGE (servicedate);
+
+CREATE INDEX ON afc.ridership (servicedate);
+
+
+CREATE TABLE afc.deviceclass (
+    deviceclassid integer PRIMARY KEY,
+    balancegroupid smallint,
+    deviceclasstype smallint,
+    tvmtarversiongroupid integer,
+    tvmapltarversiongroupid integer,
+    tvmtechversiongroupid integer,
+    tvmswversiongroupid integer,
+    description character varying(50),
+    testflag bit(1) NOT NULL,
+    usernew character varying(30),
+    timenew timestamp without time zone,
+    userchange character varying(30),
+    timechange timestamp without time zone,
+    typeoftariffdownloaddata smallint,
+    parametergroupid integer
+);
+
+CREATE TABLE afc.event (
+    eventcode integer PRIMARY KEY,
+    eventdesc character varying(15),
+    eventtxt character varying(80),
+    eventgroupref smallint,
+    display bit(1),
+    logging bit(1),
+    alarm bit(1),
+    sendevent bit(1),
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(25),
+    timechange timestamp without time zone
+);
+
+CREATE TABLE afc.eventgroup (
+    eventgroupref smallint PRIMARY KEY,
+    eventgroupdesc character varying(50),
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(25),
+    timechange timestamp without time zone
+);
+
+CREATE TABLE afc.holiday (
+    versionid integer NOT NULL,
+    datehour timestamp without time zone NOT NULL,
+    holidayclass smallint,
+    description character varying(80),
+    usernew character varying(25) NOT NULL,
+    timenew timestamp without time zone NOT NULL,
+    userchange character varying(25),
+    timechange timestamp without time zone
+);
+
+CREATE TABLE afc.mbta_weekend_service (
+    servicehour timestamp without time zone,
+    servicedesc character varying(30),
+    servicetype smallint,
+    dateinserted timestamp without time zone
+);
+
+CREATE TABLE afc.routes (
+    routeid integer PRIMARY KEY,
+    description character varying(50) NOT NULL,
+    versionid smallint,
+    multimediagroupid smallint,
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(25),
+    timechange timestamp without time zone
+);
+
+CREATE TABLE afc.tariffversions (
+    versionid integer PRIMARY KEY,
+    validitystarttime timestamp without time zone,
+    validityendtime timestamp without time zone,
+    railroadid smallint,
+    description character varying(50),
+    status smallint,
+    theovertakerflag smallint,
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(25),
+    timechange timestamp without time zone,
+    type smallint
+);
+
+CREATE TABLE afc.tickettype (
+    versionid smallint NOT NULL,
+    tickettypeid integer NOT NULL,
+    summary smallint,
+    type smallint,
+    amount integer,
+    balamt1 integer,
+    balamt2 smallint,
+    farecalculationruleid smallint,
+    multimediagroupid smallint,
+    statetaxid smallint,
+    sendonlevt smallint,
+    svcproviderid smallint,
+    validityid smallint,
+    genderinput smallint,
+    description character varying(60),
+    param1 smallint,
+    param2 smallint,
+    param3 smallint,
+    param4 smallint,
+    param5 smallint,
+    param6 smallint,
+    param7 smallint,
+    param8 smallint,
+    param9 character varying(15),
+    param10 character varying(15),
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(15),
+    timechange timestamp without time zone,
+    ticketmembergroupid smallint,
+    externalid character varying(15)
+);
+
+CREATE TABLE afc.tvmstation (
+    stationid integer PRIMARY KEY,
+    nameshort character varying(25),
+    namelong character varying(30),
+    name character varying(30),
+    town character varying(15),
+    tariffproperty smallint,
+    tariffzone smallint,
+    usernew character varying(25),
+    timenew timestamp without time zone,
+    userchange character varying(15),
+    timechange timestamp without time zone,
+    companyid smallint,
+    graphickey smallint,
+    stationtype smallint,
+    externalid smallint
+);
+
+CREATE TABLE afc.tvmtable (
+    deviceclassid integer NOT NULL,
+    deviceid integer NOT NULL,
+    balancegroupid smallint,
+    tvmabbreviation character varying(12) NOT NULL,
+    tvmlocation1 character varying(50),
+    tvmlocation2 character varying(50),
+    tvmpostalcode character varying(5),
+    tvmgroupref integer NOT NULL,
+    locationid integer NOT NULL,
+    tvmtariffzoneid integer,
+    tvmtarversiongroupid integer,
+    tvmapltarversiongroupid integer,
+    tvmtechversiongroupid integer,
+    tvmswversiongroupid integer,
+    tvminstanceid integer,
+    tvmnetaddr character varying(15),
+    tvmnetsubaddr character varying(15),
+    tvmrouteraddr character varying(15),
+    companyid integer,
+    tvmlicense1 character varying(30),
+    tvmlicense2 character varying(30),
+    tvmphonenumber character varying(15),
+    tvmfepgroupref integer,
+    tvmnetconfgroupref integer,
+    tvmnetmode integer NOT NULL,
+    graphickey integer,
+    defaultdestgroupid integer,
+    routeid integer NOT NULL,
+    defaultstartgroupid integer,
+    versionid integer,
+    bankcode bigint,
+    bankaccount bigint,
+    multimediagroupid integer,
+    reserved4 bigint,
+    reserved5 bigint,
+    reserved6 bigint,
+    reserved7 bigint,
+    reserved8 bigint,
+    reserved9 bigint,
+    reserved3 bigint,
+    reserved2 bigint,
+    reserved1 bigint,
+    serialno integer,
+    fieldstate smallint,
+    usernew character varying(20),
+    timenew timestamp without time zone,
+    userchange character varying(20),
+    timechange timestamp without time zone,
+    parametergroupid integer
+);
+
+
+-- ALTER TABLE ONLY afc.holiday
+--     ADD CONSTRAINT holiday_pkey PRIMARY KEY (versionid, datehour);
+
+-- -- MBTA_WEEKEND_SERVICE TABLE???
+
+
+
+-- ALTER TABLE ONLY afc.route
+--     ADD CONSTRAINT route_pkey PRIMARY KEY (routeid);
+
+-- ALTER TABLE ONLY afc.signcode
+--     ADD CONSTRAINT signcode_parentroute_fkey FOREIGN KEY (parentroute) REFERENCES afc.route(routeid);
+
+-- ALTER TABLE ONLY rpt.routetobranch
+--     ADD CONSTRAINT routetobranch_routeid_fkey FOREIGN KEY (routeid) REFERENCES afc.route(routeid);
+
+-- ALTER TABLE ONLY rpt.stationtoroute
+--     ADD CONSTRAINT stationtoroute_routeid_fkey FOREIGN KEY (routeid) REFERENCES afc.route(routeid);
+
+-- -- TARIFFVERSIONS TABLE???
+
+
+-- ALTER TABLE ONLY afc.cashboxmovement
+--     ADD CONSTRAINT cashboxmovement_deviceclassid_fkey FOREIGN KEY (deviceclassid) REFERENCES afc.deviceclass(deviceclassid);
+
+
+-- --
+-- -- Name: cashboxmovement cashboxmovement_deviceclassid_fkey1; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.cashboxmovement
+--     ADD CONSTRAINT cashboxmovement_deviceclassid_fkey1 FOREIGN KEY (deviceclassid, deviceid) REFERENCES afc.device(deviceclassid, deviceid);
+
+
+-- --
+-- -- Name: device device_deviceclassid_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.device
+--     ADD CONSTRAINT device_deviceclassid_fkey FOREIGN KEY (deviceclassid) REFERENCES afc.deviceclass(deviceclassid);
+
+
+-- --
+-- -- Name: device device_locationid_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.device
+--     ADD CONSTRAINT device_locationid_fkey FOREIGN KEY (locationid) REFERENCES afc.station(stationid);
+
+
+-- --
+-- -- Name: deviceevent deviceevent_deviceid_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.deviceevent
+--     ADD CONSTRAINT deviceevent_deviceid_fkey FOREIGN KEY (deviceclassid, deviceid) REFERENCES afc.device(deviceclassid, deviceid);
+
+
+-- --
+-- -- Name: deviceevent deviceevent_eventcode_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.deviceevent
+--     ADD CONSTRAINT deviceevent_eventcode_fkey FOREIGN KEY (eventcode) REFERENCES afc.deviceeventtype(eventcode);
+
+
+-- --
+-- -- Name: signcode signcode_parentroute_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.signcode
+--     ADD CONSTRAINT signcode_parentroute_fkey FOREIGN KEY (parentroute) REFERENCES afc.route(routeid);
+
+
+-- --
+-- -- Name: tickettype tickettype_ticketduration_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.tickettype
+--     ADD CONSTRAINT tickettype_ticketduration_fkey FOREIGN KEY (ticketduration) REFERENCES afc.ticketduration(ticketdurationid);
+
+
+-- --
+-- -- Name: tickettype tickettype_ticketmodeid_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.tickettype
+--     ADD CONSTRAINT tickettype_ticketmodeid_fkey FOREIGN KEY (ticketmodeid) REFERENCES afc.ticketmode(ticketmodeid);
+
+
+-- --
+-- -- Name: tickettype tickettype_ticketusertypeid_fkey; Type: FK CONSTRAINT; Schema: afc; Owner: etl
+-- --
+
+-- ALTER TABLE ONLY afc.tickettype
+--     ADD CONSTRAINT tickettype_ticketusertypeid_fkey FOREIGN KEY (ticketusertypeid) REFERENCES afc.ticketusertype(ticketusertypeid);
+
+-- ****************************************** --
+-- END INIT AFC SCHEMA --
+-- ****************************************** --
 
 -- Completed on 2023-10-03 12:47:44 EDT
 

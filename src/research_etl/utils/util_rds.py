@@ -306,6 +306,41 @@ def copy_gzip_csv_to_db(local_path: str, destination_table: str) -> None:
     copy_log.log_complete()
 
 
+def afc_copy(local_path: str, destination_table: str, headers: List[str]) -> None:
+    """
+    load local csv or csv.gz file into DB using psql COPY command
+
+    correct headers should be provided
+
+    will throw if psql command does not exit with code 0
+
+    :param local_path: path to local file that will be loaded
+    :param destination_table: table name for COPY destination
+    """
+    copy_log = ProcessLogger(
+        "psql_afc_copy", local_file=local_path, destination_table=destination_table, headers=" | ".join(headers)
+    )
+    copy_log.log_start()
+
+    copy_from = f"FROM {local_path} "
+    if local_path.lower().endswith(".gz"):
+        copy_from = f"FROM PROGRAM 'gzip -dc {local_path}' "
+
+    copy_command = f"\\COPY {destination_table} ({','.join(headers)}) {copy_from} WITH NULL '\\N' CSV"
+
+    psql = [
+        "psql",
+        f"postgresql://{create_db_connection_string()}",
+        "-c",
+        f"{copy_command}",
+    ]
+
+    process_result = subprocess.run(psql, check=True)
+
+    copy_log.add_metadata(exit_code=process_result.returncode)
+    copy_log.log_complete()
+
+
 def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
     """
     load local csv.zip file into DB using psql COPY command

@@ -60,7 +60,7 @@ def download_korbato_files(temp_folder: str) -> None:
 
 def load_korbato_file(file_path: str, db_manager: DatabaseManager) -> None:
     """
-    load one file korbato file into rds
+    load one korbato file into rds
     """
     file_name = file_path.split("/")[-1]
 
@@ -78,7 +78,7 @@ def load_korbato_file(file_path: str, db_manager: DatabaseManager) -> None:
         del_q = sa.text(f"DELETE FROM {table} WHERE svc_date = '{year}-{month}-{day}'")
         db_manager.execute(del_q)
 
-    # handle lookup talbes
+    # handle lookup tables
     else:
         table = file_name.rsplit("_", 1)[0]
         table = f"{schema}.{table}"
@@ -108,7 +108,9 @@ def run() -> None:
         db_manager = DatabaseManager()
         download_korbato_files(download_folder)
 
-        for file in os.listdir(download_folder):
+        downloaded_files = os.listdir(download_folder)
+        process_logger.add_metadata(file_count=len(downloaded_files))
+        for file in downloaded_files:
             load_korbato_file(os.path.join(download_folder, file), db_manager)
 
         process_logger.log_complete()
