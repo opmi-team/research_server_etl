@@ -3,6 +3,8 @@ from typing import List
 
 
 class LookupTables(TypedDict):
+    """Basic AFC Lookup Table information"""
+
     file_name: str
     columns: List[str]
 

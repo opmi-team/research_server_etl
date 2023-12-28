@@ -158,6 +158,14 @@ def load_lookups(file_path: str, db_manager: DatabaseManager) -> None:
 
 
 def run() -> None:
+    """
+    main job event loop
+
+    list s3 objects from afc/in bucket and process any found files
+
+    each found file should temporarily downoladed locally for processsing and
+    then deleted
+    """
     s3_in_path = "afc/in"
     s3_error_path = "afc/error"
     s3_in_bucket = os.getenv("AFC_IN_BUCKET", "")

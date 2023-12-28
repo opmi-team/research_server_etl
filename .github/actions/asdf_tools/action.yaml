@@ -1,0 +1,20 @@
+name: Setup ASDF Tools 
+description: Loads ASDF tools for a CI/CD job, installing them if not cached
+
+runs:
+  using: composite
+  steps:
+    - name: Check ASDF Tools Cache
+      uses: actions/cache@v3
+      id: asdf-cache
+      with:
+        path: ~/.asdf
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/.tool-versions') }}
+
+    - name: Install ASDF Tools
+      # only install if we can't find the cache (i.e. different os or new tools)
+      if: "!steps.asdf-cache.outputs.cache-hit"
+      uses: asdf-vm/actions/install@v2
+
+    - name: Re-Shim ASDF Install
+      uses: mbta/actions/reshim-asdf@v1

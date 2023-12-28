@@ -1,0 +1,26 @@
+name: Setup Python Dependencies
+description: Loads python dependencies for a CI/CD job, installing them if not cached
+
+runs:
+  using: composite
+  steps:
+    - name: ASDF Tools Install
+      uses: ./.github/actions/asdf_tools
+
+    - name: Check Python Dependencies Cache
+      uses: actions/cache@v3
+      id: python-cache
+      with:
+        path: |
+          ~/.cache/pypoetry
+          **/.venv
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install Python Dependencies
+      # only install if we can't find the cache (i.e. different os or new dependencies)
+      if: "!steps.python-cache.outputs.cache-hit"
+      shell: bash
+      # env use py3.11 forces usage of asdf install over system install
+      run: |
+        poetry env use python3.11
+        poetry install -v

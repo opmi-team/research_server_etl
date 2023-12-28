@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List
 
 import boto3
 
@@ -150,7 +150,7 @@ def rename_s3_object(source_obj: str, dest_obj: str) -> bool:
         )
 
         if not delete_object(source_obj):
-            raise Exception(f"failed to delete {source_obj}")
+            raise FileExistsError(f"failed to delete {source_obj}")
 
         process_logger.log_complete()
         return True
@@ -158,3 +158,46 @@ def rename_s3_object(source_obj: str, dest_obj: str) -> bool:
     except Exception as error:
         process_logger.log_failure(error)
         return False
+
+
+def running_in_aws() -> bool:
+    """
+    return True if running on aws, else False
+    """
+    return bool(os.getenv("AWS_DEFAULT_REGION"))
+
+
+def check_for_parallel_tasks() -> None:
+    """
+    Check that that this task is not already running on ECS
+    """
+    if not running_in_aws():
+        return
+
+    process_logger = ProcessLogger("check_for_tasks")
+    process_logger.log_start()
+
+    client = boto3.client("ecs")
+    ecs_cluster = os.environ["ECS_CLUSTER"]
+    ecs_task_group = os.environ["ECS_TASK_GROUP"]
+
+    # get all of the tasks running on the cluster
+    task_arns = client.list_tasks(cluster=ecs_cluster)["taskArns"]
+
+    # if tasks are running on the cluster, get their descriptions and check to
+    # count matches the ecs task group.
+    match_count = 0
+    if task_arns:
+        running_tasks = client.describe_tasks(cluster=ecs_cluster, tasks=task_arns)["tasks"]
+
+        for task in running_tasks:
+            if ecs_task_group == task["group"]:
+                match_count += 1
+
+    # if the group matches, raise an exception that will terminate the process
+    if match_count > 1:
+        exception = SystemError(f"Multiple {ecs_cluster} ECS Tasks Running")
+        process_logger.log_failure(exception)
+        raise exception
+
+    process_logger.log_complete()

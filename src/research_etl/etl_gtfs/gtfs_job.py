@@ -3,6 +3,7 @@ import datetime
 import zipfile
 
 from typing import Tuple
+from typing import Optional
 from io import BytesIO
 from http.client import HTTPMessage
 import urllib.request
@@ -178,7 +179,7 @@ def download_gtfs() -> Tuple[BytesIO, HTTPMessage]:
     return (gtfs_bytes, gtfs_headers)
 
 
-def last_feed_version(db_manager: DatabaseManager) -> str:
+def last_feed_version(db_manager: DatabaseManager) -> Optional[str]:
     """
     Retrieve last added GTFS Feed Version from RDS
 
@@ -237,11 +238,16 @@ def process_feed_info(gtfs_bytes: BytesIO) -> Tuple[datetime.date, datetime.date
         )
 
     # Extract creation_timestamp from feed_version text
-    feed_version_dt = re.search(
+    feed_version_dt_re = re.search(
         r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}",
         feed_info_df["feed_version"][0],
-    ).group(0)
-    feed_version_dt = datetime.datetime.fromisoformat(feed_version_dt)
+    )
+    assert feed_version_dt_re is not None
+
+    feed_version_dt_str = feed_version_dt_re.group(0)
+    assert feed_version_dt_str is not None
+
+    feed_version_dt = datetime.datetime.fromisoformat(feed_version_dt_str)
 
     feed_info_df = feed_info_df.with_columns(creation_timestamp=feed_version_dt)
 
