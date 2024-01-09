@@ -1,4 +1,5 @@
 import os
+import csv
 import gzip
 import zipfile
 import platform
@@ -232,6 +233,26 @@ class DatabaseManager:
         with self.session.begin() as cursor:
             return [row._asdict() for row in cursor.execute(select_query)]
 
+    def write_to_csv(self, query: sa.sql.selectable.Select, dest_path: str, batch_size: int = 1024 * 1024) -> None:
+        """
+        stream db select results to csv file in batches
+
+        :param query:       SQL Query to execute
+        :param dest_path:   write location of csv file
+        :param batch_size:  number of records per result partition of SQL query
+        """
+        header = None
+        with self.session.begin() as cursor:
+            result = cursor.execute(query).yield_per(batch_size)
+            with open(dest_path, "w", newline="", encoding="utf8") as csv_file:
+                for part in result.partitions():
+                    rows = [row._asdict() for row in part]
+                    if header is None:
+                        header = list(rows[0].keys())
+                        writer = csv.DictWriter(csv_file, fieldnames=header, quoting=csv.QUOTE_NONNUMERIC)
+                        writer.writeheader()
+                    writer.writerows(rows)
+
     def vaccuum_analyze(self, table: str) -> None:
         """RUN VACUUM (ANALYZE) on table"""
         with self.session.begin() as cursor:
@@ -247,8 +268,9 @@ class DatabaseManager:
         """
         truncate db table
 
-        restart_identity: Automatically restart sequences owned by columns of the truncated table(s).
-        cascade: Automatically truncate all tables that have foreign-key references to any of the named tables, or to any tables added to the group due to CASCADE.
+        :param restart_identity: Restart sequences owned by columns of the truncated table(s).
+        :param cascade:          Truncate all tables that have foreign-key relations to any of the named tables,
+                                 or to any tables added to the group due to CASCADE.
         """
         truncate_query = f"TRUNCATE {table_to_truncate}"
 
@@ -272,8 +294,8 @@ def copy_gzip_csv_to_db(local_path: str, destination_table: str) -> None:
 
     will throw if psql command does not exit with code 0
 
-    :param local_path: path to local file that will be loaded
-    :param destination_table: table name for COPY destination
+    :param local_path:          path to local file that will be loaded
+    :param destination_table:   table name for COPY destination
     """
     copy_log = ProcessLogger(
         "gzip_psql_copy",

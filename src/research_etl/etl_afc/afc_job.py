@@ -157,7 +157,7 @@ def load_lookups(file_path: str, db_manager: DatabaseManager) -> None:
     shutil.rmtree(afc_folder, ignore_errors=True)
 
 
-def run() -> None:
+def run(db_manager: DatabaseManager) -> None:
     """
     main job event loop
 
@@ -170,14 +170,16 @@ def run() -> None:
     s3_error_path = "afc/error"
     s3_in_bucket = os.getenv("AFC_IN_BUCKET", "")
     temp_download_folder = "/tmp"
-    db_manager = DatabaseManager()
+
+    process_log = ProcessLogger("afc_etl_job")
+    process_log.log_start()
 
     for s3_object in file_list_from_s3(s3_in_bucket, s3_in_path):
         object_name = s3_object.split("/")[-1]
         full_local_path = os.path.join(temp_download_folder, object_name)
         download_file(s3_object, full_local_path)
 
-        afc_log = ProcessLogger("afc_etl_job", s3_object=s3_object, local_path=full_local_path)
+        afc_log = ProcessLogger("afc_load_file", s3_object=s3_object, local_path=full_local_path)
         afc_log.log_start()
 
         try:
@@ -197,6 +199,9 @@ def run() -> None:
         finally:
             os.remove(full_local_path)
 
+    process_log.log_complete()
+
 
 if __name__ == "__main__":
-    run()
+    local_db = DatabaseManager()
+    run(local_db)

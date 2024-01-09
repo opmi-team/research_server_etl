@@ -94,7 +94,7 @@ def load_korbato_file(file_path: str, db_manager: DatabaseManager) -> None:
     copy_zip_csv_to_db(file_path, table)
 
 
-def run() -> None:
+def run(db_manager: DatabaseManager) -> None:
     """
     main job event loop
 
@@ -105,7 +105,6 @@ def run() -> None:
 
     download_folder = "/tmp/korbato_etl"
     try:
-        db_manager = DatabaseManager()
         download_korbato_files(download_folder)
 
         downloaded_files = os.listdir(download_folder)
@@ -123,4 +122,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    local_db = DatabaseManager()
+    run(local_db)
