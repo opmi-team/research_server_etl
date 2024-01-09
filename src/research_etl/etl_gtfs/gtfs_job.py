@@ -474,7 +474,7 @@ def build_stops_in_pattern(
     build_log.log_complete()
 
 
-def run() -> None:
+def run(db_manager: DatabaseManager) -> None:
     """
     main job event loop
 
@@ -486,8 +486,6 @@ def run() -> None:
     process_logger = ProcessLogger("etl_gtfs")
     process_logger.log_start()
     try:
-        db_manager = DatabaseManager()
-
         gtfs_bytes, gtfs_headers = download_gtfs()
 
         # current GTFS feed_version provided as header metadata from file download
@@ -536,4 +534,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    local_db = DatabaseManager()
+    run(local_db)
