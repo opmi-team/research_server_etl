@@ -22,8 +22,8 @@ services:
     env_file: .env
     environment:
       KORBATO_SSHKEY: |-
-        -----BEGIN RSA PRIVATE KEY-----
-        -----END RSA PRIVATE KEY-----
+        -----BEGIN OPENSSH PRIVATE KEY-----
+        -----END OPENSSH PRIVATE KEY-----
     build:
       context: .
     depends_on:

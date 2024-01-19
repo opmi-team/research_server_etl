@@ -28,7 +28,7 @@ def download_korbato_files(temp_folder: str) -> None:
     env_ssh_key = os.getenv("KORBATO_SSHKEY", "")
 
     # convert text key paramiko RSAKEY
-    ssh_key = paramiko.RSAKey.from_private_key(StringIO(env_ssh_key))
+    ssh_key = paramiko.Ed25519Key.from_private_key(StringIO(env_ssh_key))
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
