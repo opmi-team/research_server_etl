@@ -8,6 +8,11 @@ from research_etl.utils.util_logging import ProcessLogger
 
 def get_s3_client() -> boto3.client:
     """Thin function needed for stubbing tests"""
+    aws_profile = os.getenv("AWS_PROFILE", "")
+
+    if not aws_profile:
+        return boto3.Session(profile_name=aws_profile).client("s3")
+
     return boto3.client("s3")
 
 
@@ -55,7 +60,7 @@ def file_list_from_s3(bucket_name: str, file_prefix: str, max_list_size: int = 2
     :param bucket_name: the name of the bucket to look inside of
     :param file_prefix: prefix for files to generate
 
-    :return list of s3 filepaths
+    :return list of s3 filepaths formated as s3://bucket_name/object_name
     """
     process_logger = ProcessLogger("file_list_from_s3", bucket_name=bucket_name, file_prefix=file_prefix)
     process_logger.log_start()

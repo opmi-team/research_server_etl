@@ -1,8 +1,11 @@
 import os
+import re
 import datetime
 import tarfile
 import shutil
+import tempfile
 from typing import List
+from typing import Optional
 
 import sqlalchemy as sa
 
@@ -59,80 +62,108 @@ def verify_partition(date: datetime.date, table: str, db_manager: DatabaseManage
     db_manager.execute(sa.text(create_query))
 
 
-def load_ridership(file_path: str, db_manager: DatabaseManager) -> None:
+def get_afc_headers(afc_type: str) -> Optional[List[str]]:
     """
-    load ridership csv.gz file into RDS
+    return columns headers for specified afc type
     """
-    file_name = file_path.split("/")[-1]
-    service_date = datetime.datetime.strptime(file_name[:8], "%Y%m%d").date()
+    afc_headers = {
+        "faregate": [
+            "trxtime",
+            "servicedate",
+            "deviceclassid",
+            "deviceid",
+            "uniquemsid",
+            "eventsequno",
+            "tariffversion",
+            "tarifflocationid",
+            "unplanned",
+            "eventcode",
+            "inserted",
+        ],
+        "ridership": [
+            "deviceclassid",
+            "deviceid",
+            "uniquemsid",
+            "salestransactionno",
+            "sequenceno",
+            "trxtime",
+            "servicedate",
+            "branchlineid",
+            "fareoptamount",
+            "tariffversion",
+            "articleno",
+            "card",
+            "ticketstocktype",
+            "tvmtarifflocationid",
+            "movementtype",
+            "bookcanc",
+            "correctioncounter",
+            "correctionflag",
+            "tempbooking",
+            "testsaleflag",
+            "inserted",
+        ],
+    }
 
-    verify_partition(service_date, "ridership", db_manager)
-
-    delete_query = f"DELETE FROM afc.ridership WHERE servicedate = '{service_date}';"
-    db_manager.execute(sa.text(delete_query))
-
-    headers = [
-        "deviceclassid",
-        "deviceid",
-        "uniquemsid",
-        "salestransactionno",
-        "sequenceno",
-        "trxtime",
-        "servicedate",
-        "branchlineid",
-        "fareoptamount",
-        "tariffversion",
-        "articleno",
-        "card",
-        "ticketstocktype",
-        "tvmtarifflocationid",
-        "movementtype",
-        "bookcanc",
-        "correctioncounter",
-        "correctionflag",
-        "tempbooking",
-        "testsaleflag",
-        "inserted",
-    ]
-
-    afc_copy(file_path, "afc.ridership", headers)
+    return afc_headers.get(afc_type)
 
 
-def load_faregate(file_path: str, db_manager: DatabaseManager) -> None:
+def load_afc_data(s3_object: str, db_manager: DatabaseManager, afc_type: str) -> None:
     """
-    load faregate csv.gz file into RDS
+    load fargate or ridership data into RDS from csv.gz file
     """
-    file_name = file_path.split("/")[-1]
-    service_date = datetime.datetime.strptime(file_name[:8], "%Y%m%d").date()
+    headers = get_afc_headers(afc_type)
+    if headers is None:
+        raise IndexError(f"{afc_type} is not a supported AFC data load type")
 
-    verify_partition(service_date, "faregate", db_manager)
+    file_name = s3_object.split("/")[-1]
 
-    delete_query = f"DELETE FROM afc.faregate WHERE servicedate = '{service_date}';"
-    db_manager.execute(sa.text(delete_query))
+    # handle bulk import that could cover many monthly table partitions
+    if "bulk_import" in file_name:
+        start_date, end_date = re.findall(r"(\d{8})", file_name)[:2]
 
-    headers = [
-        "trxtime",
-        "servicedate",
-        "deviceclassid",
-        "deviceid",
-        "uniquemsid",
-        "eventsequno",
-        "tariffversion",
-        "tarifflocationid",
-        "unplanned",
-        "eventcode",
-        "inserted",
-    ]
+        start_date_dt = datetime.datetime.strptime(start_date, "%Y%m%d").date()
+        end_date_dt = datetime.datetime.strptime(end_date, "%Y%m%d").date()
 
-    afc_copy(file_path, "afc.faregate", headers)
+        partition_date = start_date_dt.replace(day=1)
+
+        while partition_date <= end_date_dt:
+            verify_partition(partition_date, afc_type, db_manager)
+            if partition_date.month == 12:
+                partition_date = partition_date.replace(year=partition_date.year + 1, month=1)
+            else:
+                partition_date = partition_date.replace(month=partition_date.month + 1)
+
+        delete_query = (
+            f"DELETE FROM afc.{afc_type} WHERE servicedate >= '{start_date_dt}' AND servicedate <= '{end_date_dt}';"
+        )
+        db_manager.execute(sa.text(delete_query))
+
+    # handle import for one service_date
+    else:
+        service_date = datetime.datetime.strptime(file_name[:8], "%Y%m%d").date()
+
+        verify_partition(service_date, afc_type, db_manager)
+
+        delete_query = f"DELETE FROM afc.{afc_type} WHERE servicedate = '{service_date}';"
+        db_manager.execute(sa.text(delete_query))
+
+    afc_copy(s3_object, f"afc.{afc_type}", headers)
 
 
-def load_lookups(file_path: str, db_manager: DatabaseManager) -> None:
+def load_lookups(s3_object: str, db_manager: DatabaseManager) -> None:
     """
     load afc_lookups_.csv.tar.gz file into RDS
     """
-    afc_folder = "/tmp/afc_lookups/"
-    with tarfile.open(file_path) as afc_tar:
+    # download lookup file to temp directory
+    temp_dir = tempfile.mkdtemp()
+    object_name = s3_object.split("/")[-1]
+    full_local_path = os.path.join(temp_dir, object_name)
+    download_file(s3_object, full_local_path)
+
+    # extract csv files from tar archive
+    afc_folder = os.path.join(temp_dir, "afc_lookups/")
+    with tarfile.open(full_local_path) as afc_tar:
         afc_tar.extractall(afc_folder)
 
     afc_tables: List[LookupTables] = [
@@ -154,7 +185,7 @@ def load_lookups(file_path: str, db_manager: DatabaseManager) -> None:
         db_manager.truncate_table(table_name, restart_identity=True)
         afc_copy(full_path, table_name, table["columns"])
 
-    shutil.rmtree(afc_folder, ignore_errors=True)
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def run(db_manager: DatabaseManager) -> None:
@@ -169,26 +200,23 @@ def run(db_manager: DatabaseManager) -> None:
     s3_in_path = "afc/in"
     s3_error_path = "afc/error"
     s3_in_bucket = os.getenv("AFC_IN_BUCKET", "")
-    temp_download_folder = "/tmp"
 
     process_log = ProcessLogger("afc_etl_job")
     process_log.log_start()
 
     for s3_object in file_list_from_s3(s3_in_bucket, s3_in_path):
         object_name = s3_object.split("/")[-1]
-        full_local_path = os.path.join(temp_download_folder, object_name)
-        download_file(s3_object, full_local_path)
 
-        afc_log = ProcessLogger("afc_load_file", s3_object=s3_object, local_path=full_local_path)
+        afc_log = ProcessLogger("afc_load_file", s3_object=s3_object)
         afc_log.log_start()
 
         try:
             if "_ridership_" in object_name.lower():
-                load_ridership(full_local_path, db_manager)
+                load_afc_data(s3_object, db_manager, "ridership")
             elif "_faregate_" in object_name.lower():
-                load_faregate(full_local_path, db_manager)
+                load_afc_data(s3_object, db_manager, "faregate")
             elif "afc_lookups_" in object_name.lower():
-                load_lookups(full_local_path, db_manager)
+                load_lookups(s3_object, db_manager)
 
         except Exception as exception:
             rename_s3_object(s3_object, os.path.join(s3_in_bucket, s3_error_path, object_name))
@@ -196,8 +224,6 @@ def run(db_manager: DatabaseManager) -> None:
         else:
             delete_object(s3_object)
             afc_log.log_complete()
-        finally:
-            os.remove(full_local_path)
 
     process_log.log_complete()
 

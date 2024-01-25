@@ -687,7 +687,7 @@ CREATE TABLE afc.holiday (
     versionid integer NOT NULL,
     datehour timestamp without time zone NOT NULL,
     holidayclass smallint,
-    description character varying(80),
+    description character varying(120),
     usernew character varying(25) NOT NULL,
     timenew timestamp without time zone NOT NULL,
     userchange character varying(25),
@@ -696,14 +696,14 @@ CREATE TABLE afc.holiday (
 
 CREATE TABLE afc.mbta_weekend_service (
     servicehour timestamp without time zone,
-    servicedesc character varying(30),
+    servicedesc character varying(120),
     servicetype smallint,
     dateinserted timestamp without time zone
 );
 
 CREATE TABLE afc.routes (
     routeid integer PRIMARY KEY,
-    description character varying(50) NOT NULL,
+    description character varying(120) NOT NULL,
     versionid smallint,
     multimediagroupid smallint,
     usernew character varying(25),
@@ -717,7 +717,7 @@ CREATE TABLE afc.tariffversions (
     validitystarttime timestamp without time zone,
     validityendtime timestamp without time zone,
     railroadid smallint,
-    description character varying(50),
+    description character varying(120),
     status smallint,
     theovertakerflag smallint,
     usernew character varying(25),
@@ -742,7 +742,7 @@ CREATE TABLE afc.tickettype (
     svcproviderid smallint,
     validityid smallint,
     genderinput smallint,
-    description character varying(60),
+    description character varying(120),
     param1 smallint,
     param2 smallint,
     param3 smallint,
@@ -763,10 +763,10 @@ CREATE TABLE afc.tickettype (
 
 CREATE TABLE afc.tvmstation (
     stationid integer PRIMARY KEY,
-    nameshort character varying(25),
-    namelong character varying(30),
-    name character varying(30),
-    town character varying(15),
+    nameshort character varying(50),
+    namelong character varying(120),
+    name character varying(120),
+    town character varying(50),
     tariffproperty smallint,
     tariffzone smallint,
     usernew character varying(25),
@@ -784,9 +784,9 @@ CREATE TABLE afc.tvmtable (
     deviceid integer NOT NULL,
     balancegroupid smallint,
     tvmabbreviation character varying(12) NOT NULL,
-    tvmlocation1 character varying(50),
-    tvmlocation2 character varying(50),
-    tvmpostalcode character varying(5),
+    tvmlocation1 character varying(120),
+    tvmlocation2 character varying(120),
+    tvmpostalcode character varying(10),
     tvmgroupref integer NOT NULL,
     locationid integer NOT NULL,
     tvmtariffzoneid integer,

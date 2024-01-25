@@ -1,6 +1,7 @@
 import os
 import csv
 import gzip
+import time
 import zipfile
 import platform
 import subprocess
@@ -322,13 +323,10 @@ def copy_gzip_csv_to_db(local_path: str, destination_table: str) -> None:
         f"{copy_command}",
     ]
 
-    process_result = subprocess.run(psql, check=True)
-
-    copy_log.add_metadata(exit_code=process_result.returncode)
-    copy_log.log_complete()
+    run_psql_subprocess(psql, copy_log)
 
 
-def afc_copy(local_path: str, destination_table: str, headers: List[str]) -> None:
+def afc_copy(obj_path: str, destination_table: str, headers: List[str]) -> None:
     """
     load local csv or csv.gz file into DB using psql COPY command
 
@@ -340,13 +338,18 @@ def afc_copy(local_path: str, destination_table: str, headers: List[str]) -> Non
     :param destination_table: table name for COPY destination
     """
     copy_log = ProcessLogger(
-        "psql_afc_copy", local_file=local_path, destination_table=destination_table, headers=" | ".join(headers)
+        "psql_afc_copy",
+        obj_path=obj_path,
+        destination_table=destination_table,
+        headers=" | ".join(headers),
     )
     copy_log.log_start()
 
-    copy_from = f"FROM {local_path} "
-    if local_path.lower().endswith(".gz"):
-        copy_from = f"FROM PROGRAM 'gzip -dc {local_path}' "
+    copy_from = f"FROM {obj_path} "
+    if obj_path.lower().startswith("s3://") and obj_path.lower().endswith(".gz"):
+        copy_from = f"FROM PROGRAM 'aws s3 cp {obj_path} - | gzip -dc' "
+    elif obj_path.lower().endswith(".gz"):
+        copy_from = f"FROM PROGRAM 'gzip -dc {obj_path}' "
 
     copy_command = f"\\COPY {destination_table} ({','.join(headers)}) {copy_from} WITH NULL '\\N' CSV"
 
@@ -357,10 +360,7 @@ def afc_copy(local_path: str, destination_table: str, headers: List[str]) -> Non
         f"{copy_command}",
     ]
 
-    process_result = subprocess.run(psql, check=True)
-
-    copy_log.add_metadata(exit_code=process_result.returncode)
-    copy_log.log_complete()
+    run_psql_subprocess(psql, copy_log)
 
 
 def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
@@ -404,7 +404,26 @@ def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
         f"{copy_command}",
     ]
 
-    process_result = subprocess.run(psql, check=True)
+    run_psql_subprocess(psql, copy_log)
 
-    copy_log.add_metadata(exit_code=process_result.returncode)
-    copy_log.log_complete()
+
+def run_psql_subprocess(psql_cmd: List[str], logger: ProcessLogger) -> None:
+    """
+    run psql command with retry logic
+    """
+    max_retries = 3
+    logger.add_metadata(max_retries=max_retries)
+
+    for retry_attempts in range(max_retries + 1):
+        try:
+            logger.add_metadata(retry_attempts=retry_attempts)
+            process_result = subprocess.run(psql_cmd, check=True)
+            break
+        except Exception as exception:
+            if retry_attempts == max_retries:
+                logger.log_failure(exception=exception)
+                raise exception
+            time.sleep(5)
+
+    logger.add_metadata(exit_code=process_result.returncode)
+    logger.log_complete()
