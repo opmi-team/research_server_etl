@@ -217,6 +217,8 @@ def run(db_manager: DatabaseManager) -> None:
                 load_afc_data(s3_object, db_manager, "faregate")
             elif "afc_lookups_" in object_name.lower():
                 load_lookups(s3_object, db_manager)
+            else:
+                raise NotImplementedError(f"No AFC load process for: {s3_object}")
 
         except Exception as exception:
             rename_s3_object(s3_object, os.path.join(s3_in_bucket, s3_error_path, object_name))
