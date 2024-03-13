@@ -383,11 +383,12 @@ def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
     )
     copy_log.log_start()
 
-    csv_file = local_path.split("/")[-1].replace(".zip", "")
-
     with zipfile.ZipFile(local_path, "r") as zip_files:
+        csv_file = zip_files.filelist[0].filename
         with zip_files.open(csv_file, "r") as reader:
             headers = reader.readline().decode().strip().lower().split(",")
+
+    copy_log.add_metadata(csv_file=csv_file, headers="|".join(headers))
 
     copy_command = (
         f"\\COPY {destination_table} "
