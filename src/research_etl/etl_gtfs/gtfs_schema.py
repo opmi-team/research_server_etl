@@ -287,8 +287,8 @@ transfers_schema = {
     "min_wheelchair_time": polars.Int64,
     "suggested_buffer_time": polars.Int64,
     "wheelchair_transfer": polars.Int64,
-    "from_trip_id": str,  # Not Used - Added for primary key
-    "to_trip_id": str,  # Not Used - Added for primary key
+    # "from_trip_id": str,  # Not Used
+    # "to_trip_id": str,  # Not Used
 }
 
 trips_schema = {

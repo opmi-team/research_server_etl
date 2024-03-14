@@ -144,12 +144,6 @@ TABLES_TO_LOAD = [
         table_name="transfers",
         schema=transfers_schema,
         primary_keys=[],
-        # primary_keys=[
-        #     "from_stop_id",
-        #     "to_stop_id",
-        #     "from_trip_id",
-        #     "to_trip_id",
-        # ],
     ),
     GTFSSchema(
         table_name="trips",
