@@ -326,7 +326,7 @@ def copy_gzip_csv_to_db(local_path: str, destination_table: str) -> None:
     run_psql_subprocess(psql, copy_log)
 
 
-def afc_copy(obj_path: str, destination_table: str, headers: List[str]) -> None:
+def afc_copy(obj_path: str, destination_table: str, headers: List[str], null_as: bool = True) -> None:
     """
     load local csv or csv.gz file into DB using psql COPY command
 
@@ -351,7 +351,11 @@ def afc_copy(obj_path: str, destination_table: str, headers: List[str]) -> None:
     elif obj_path.lower().endswith(".gz"):
         copy_from = f"FROM PROGRAM 'gzip -dc {obj_path}' "
 
-    copy_command = f"\\COPY {destination_table} ({','.join(headers)}) {copy_from} WITH NULL '\\N' CSV"
+    null_as_str = "WITH NULL '\\N'"
+    if not null_as:
+        null_as_str = ""
+
+    copy_command = f"\\COPY {destination_table} ({','.join(headers)}) {copy_from} {null_as_str} CSV QUOTE AS '\"'"
 
     psql = [
         "psql",

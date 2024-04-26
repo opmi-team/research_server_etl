@@ -148,7 +148,7 @@ def load_afc_data(s3_object: str, db_manager: DatabaseManager, afc_type: str) ->
         delete_query = f"DELETE FROM afc.{afc_type} WHERE servicedate = '{service_date}';"
         db_manager.execute(sa.text(delete_query))
 
-    afc_copy(s3_object, f"afc.{afc_type}", headers)
+    afc_copy(s3_object, f"afc.{afc_type}", headers, null_as=False)
 
 
 def load_lookups(s3_object: str, db_manager: DatabaseManager) -> None:
@@ -197,8 +197,8 @@ def run(db_manager: DatabaseManager) -> None:
     each found file should temporarily downoladed locally for processsing and
     then deleted
     """
-    s3_in_path = "afc/in"
-    s3_error_path = "afc/error"
+    s3_in_path = "afc_oracle_db"
+    s3_error_path = "afc_oracle_db_error"
     s3_in_bucket = os.getenv("AFC_IN_BUCKET", "")
 
     process_log = ProcessLogger("afc_etl_job")
