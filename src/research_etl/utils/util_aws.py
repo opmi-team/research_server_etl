@@ -8,9 +8,9 @@ from research_etl.utils.util_logging import ProcessLogger
 
 def get_s3_client() -> boto3.client:
     """Thin function needed for stubbing tests"""
-    aws_profile = os.getenv("AWS_PROFILE", "")
+    aws_profile = os.getenv("AWS_PROFILE", None)
 
-    if not aws_profile:
+    if aws_profile is not None:
         return boto3.Session(profile_name=aws_profile).client("s3")
 
     return boto3.client("s3")

@@ -204,7 +204,7 @@ def run(db_manager: DatabaseManager) -> None:
     process_log = ProcessLogger("afc_etl_job")
     process_log.log_start()
 
-    for s3_object in file_list_from_s3(s3_in_bucket, s3_in_path):
+    for s3_object in sorted(file_list_from_s3(s3_in_bucket, s3_in_path)):
         object_name = s3_object.split("/")[-1]
 
         afc_log = ProcessLogger("afc_load_file", s3_object=s3_object)
