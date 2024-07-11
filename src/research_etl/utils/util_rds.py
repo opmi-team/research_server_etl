@@ -367,6 +367,19 @@ def afc_copy(obj_path: str, destination_table: str, headers: List[str], null_as:
     run_psql_subprocess(psql, copy_log)
 
 
+def zip_line_count(local_path: str) -> str:
+    """
+    get line count of local zip file
+
+    :param local_path: path to local zip file
+
+    :return number of lines in un-compressed zip file
+    """
+    output = subprocess.check_output(f"unzip -p {local_path} | wc -l", shell=True)
+
+    return output.decode("utf8").strip()
+
+
 def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
     """
     load local csv.zip file into DB using psql COPY command
@@ -384,6 +397,7 @@ def copy_zip_csv_to_db(local_path: str, destination_table: str) -> None:
         "zip_psql_copy",
         local_file=local_path,
         destination_table=destination_table,
+        row_count=zip_line_count(local_path),
     )
     copy_log.log_start()
 

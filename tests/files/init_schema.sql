@@ -464,6 +464,63 @@ ALTER TABLE ONLY gtfs.trips
 
 CREATE SCHEMA odx2;
 
+CREATE TABLE odx2.fare_action (
+    action_key SMALLINT PRIMARY KEY
+    , action_name TEXT
+    , action_desc TEXT
+);
+
+CREATE TABLE odx2.fare_medium (
+    fare_med_key SMALLINT PRIMARY KEY
+    , fare_med_name TEXT
+    , fare_med_desc TEXT
+);
+
+CREATE TABLE odx2.fare_product (
+    fare_prod_id TEXT PRIMARY KEY
+    , fare_prod_name TEXT
+    , fare_prod_desc TEXT
+    , category_key SMALLINT
+    , rider_type_key SMALLINT
+    , days_valid SMALLINT
+    , temporal_validity TEXT
+);
+
+CREATE TABLE odx2.fare_product_category (
+    category_key SMALLINT PRIMARY KEY
+    , category_name TEXT
+    , category_desc TEXT
+);
+
+CREATE TABLE odx2.fare_transaction (
+    txn_key BIGINT
+    , svc_date DATE
+    , card TEXT
+    , txn_time TIMESTAMP NOT NULL
+    , action_key SMALLINT NOT NULL
+    , device_id TEXT NOT NULL
+    , txn_seq INT NOT NULL
+    , fare_med_key SMALLINT
+    , fare_prod_id TEXT
+    , amount INTEGER
+    , sv_balance INTEGER
+    , ride_balance SMALLINT
+    , account_key TEXT
+    , xfer_to BOOLEAN
+    , vehicle_id TEXT
+    , route_id TEXT
+    , dir_id TEXT
+    , pattern_id TEXT
+    , trip_id TEXT
+    , place_id TEXT
+    , lat DOUBLE PRECISION
+    , lon DOUBLE PRECISION
+    , canceled BOOLEAN NOT NULL
+    , insert_dt TIMESTAMP NOT NULL
+) PARTITION BY RANGE (svc_date);
+
+CREATE INDEX ON odx2.fare_transaction (svc_date);
+
 CREATE TABLE odx2.fleet (
     fleet_key smallint NOT NULL,
     fleet_name text NOT NULL,
@@ -477,7 +534,7 @@ CREATE TABLE odx2.od_code (
 );
 
 CREATE TABLE odx2.pattern (
-    pattern_id text NOT NULL,
+    pattern_id text PRIMARY KEY,
     route_id text NOT NULL,
     gtfs_dir smallint,
     dir_id text,
@@ -512,6 +569,12 @@ CREATE TABLE odx2.ride (
     start_visit_key bigint,
     end_visit_key bigint,
     insert_dt timestamp with time zone NOT NULL
+);
+
+CREATE TABLE odx2.rider_type (
+    rider_type_key SMALLINT PRIMARY KEY
+    , rider_type_name TEXT
+    , rider_type_desc TEXT
 );
 
 CREATE TABLE odx2.stage (

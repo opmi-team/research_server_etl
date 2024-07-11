@@ -1,5 +1,6 @@
 import os
 import tempfile
+import datetime
 from io import StringIO
 
 import paramiko
@@ -9,6 +10,39 @@ from research_etl.utils.util_logging import ProcessLogger
 from research_etl.utils.util_rds import DatabaseManager
 from research_etl.utils.util_rds import copy_zip_csv_to_db
 from research_etl.utils.util_sftp import walk_sftp_dirs
+
+
+def verify_partition(date: datetime.date, table: str, db_manager: DatabaseManager) -> None:
+    """
+    check if table partition exists for odx2 table and date
+    if does not exist, create partition
+    """
+    partition_table = f"{table}_y{date.strftime('%Y')}m{date.strftime('%m')}"
+    check_query = (
+        "SELECT EXISTS ( "
+        "    SELECT FROM pg_tables WHERE "
+        "       schemaname = 'odx2' "
+        f"       AND tablename = '{partition_table}'"
+        ");"
+    )
+    check_bool = db_manager.select_as_list(sa.text(check_query))[0]["exists"]
+
+    if check_bool:
+        # table already exists, do nothing
+        return
+
+    # create new partition table
+    from_month = datetime.date(date.year, date.month, 1)
+    if date.month == 12:
+        to_month = datetime.date(date.year + 1, 1, 1)
+    else:
+        to_month = datetime.date(date.year, date.month + 1, 1)
+
+    create_query = (
+        f"CREATE TABLE odx2.{partition_table} PARTITION OF odx2.{table} "
+        f"FOR VALUES FROM ('{from_month}') TO ('{to_month}');"
+    )
+    db_manager.execute(sa.text(create_query))
 
 
 def connect_ssh_client(hostname: str = "", username: str = "") -> paramiko.SSHClient:
@@ -74,30 +108,25 @@ def load_korbato_file(local_path: str, db_manager: DatabaseManager) -> None:
 
     # handle data tables
     if file_name[:8].isnumeric():
-        year = file_name[:4]
-        month = file_name[4:6]
-        day = file_name[6:8]
+        year = int(file_name[:4])
+        month = int(file_name[4:6])
+        day = int(file_name[6:8])
+        service_date = datetime.date(year, month, day)
 
         table = file_name[9:].rsplit("_", 1)[0]
-        table = f"{schema}.{table}"
 
-        del_q = sa.text(f"DELETE FROM {table} WHERE svc_date = '{year}-{month}-{day}'")
+        if table == "fare_transaction":
+            verify_partition(service_date, table, db_manager)
+
+        del_q = sa.text(f"DELETE FROM {schema}.{table} WHERE svc_date = '{year}-{month}-{day}'")
         db_manager.execute(del_q)
 
     # handle lookup tables
     else:
         table = file_name.rsplit("_", 1)[0]
-        table = f"{schema}.{table}"
+        db_manager.truncate_table(f"{schema}.{table}")
 
-        # for pattern, explicitly truncate it along with pattern_stop (a
-        # dependency) rather than cascading, which might truncate other
-        # dependent tables that we're not aware of
-        if table == "pattern":
-            db_manager.truncate_table(f"{schema}.pattern_stop")
-
-        db_manager.truncate_table(table)
-
-    copy_zip_csv_to_db(local_path, table)
+    copy_zip_csv_to_db(local_path, f"{schema}.{table}")
 
 
 def run(db_manager: DatabaseManager) -> None:
@@ -147,8 +176,9 @@ def alt_run(db_manager: DatabaseManager) -> None:
         )
         sftp_client = ssh_client.open_sftp()
 
-        sftp_paths = walk_sftp_dirs(sftp_client, "out/20240514")
-        sftp_paths += walk_sftp_dirs(sftp_client, "out/20240517")
+        # sftp_paths = walk_sftp_dirs(sftp_client, "out/20240514")
+        # sftp_paths += walk_sftp_dirs(sftp_client, "out/20240517")
+        sftp_paths = walk_sftp_dirs(sftp_client, "out/20240711")
 
         process_logger.add_metadata(file_count=len(sftp_paths))
         for sftp_path in sftp_paths:
