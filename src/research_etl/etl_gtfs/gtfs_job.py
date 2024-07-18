@@ -15,27 +15,27 @@ from research_etl.utils.util_rds import DatabaseManager
 from research_etl.utils.util_rds import create_db_connection_string
 from research_etl.utils.util_logging import ProcessLogger
 
-from .gtfs_schema import GTFSSchema
-from .gtfs_schema import feed_info_schema
-from .gtfs_schema import agency_schema
-from .gtfs_schema import calendar_schema
-from .gtfs_schema import calendar_attributes_schema
-from .gtfs_schema import calendar_dates_schema
-from .gtfs_schema import checkpoints_schema
-from .gtfs_schema import directions_schema
-from .gtfs_schema import facilities_schema
-from .gtfs_schema import facilities_properties_schema
-from .gtfs_schema import levels_schema
-from .gtfs_schema import lines_schema
-from .gtfs_schema import multi_route_trips_schema
-from .gtfs_schema import pathways_schema
-from .gtfs_schema import route_patterns_schema
-from .gtfs_schema import routes_schema
-from .gtfs_schema import shapes_schema
-from .gtfs_schema import stop_times_schema
-from .gtfs_schema import stops_schema
-from .gtfs_schema import transfers_schema
-from .gtfs_schema import trips_schema
+from research_etl.etl_gtfs.gtfs_schema import GTFSSchema
+from research_etl.etl_gtfs.gtfs_schema import feed_info_schema
+from research_etl.etl_gtfs.gtfs_schema import agency_schema
+from research_etl.etl_gtfs.gtfs_schema import calendar_schema
+from research_etl.etl_gtfs.gtfs_schema import calendar_attributes_schema
+from research_etl.etl_gtfs.gtfs_schema import calendar_dates_schema
+from research_etl.etl_gtfs.gtfs_schema import checkpoints_schema
+from research_etl.etl_gtfs.gtfs_schema import directions_schema
+from research_etl.etl_gtfs.gtfs_schema import facilities_schema
+from research_etl.etl_gtfs.gtfs_schema import facilities_properties_schema
+from research_etl.etl_gtfs.gtfs_schema import levels_schema
+from research_etl.etl_gtfs.gtfs_schema import lines_schema
+from research_etl.etl_gtfs.gtfs_schema import multi_route_trips_schema
+from research_etl.etl_gtfs.gtfs_schema import pathways_schema
+from research_etl.etl_gtfs.gtfs_schema import route_patterns_schema
+from research_etl.etl_gtfs.gtfs_schema import routes_schema
+from research_etl.etl_gtfs.gtfs_schema import shapes_schema
+from research_etl.etl_gtfs.gtfs_schema import stop_times_schema
+from research_etl.etl_gtfs.gtfs_schema import stops_schema
+from research_etl.etl_gtfs.gtfs_schema import transfers_schema
+from research_etl.etl_gtfs.gtfs_schema import trips_schema
 
 
 DB_GTFS_SCHEMA = "gtfs"
@@ -228,7 +228,7 @@ def process_feed_info(gtfs_bytes: BytesIO) -> Tuple[datetime.date, datetime.date
     """
     with zipfile.ZipFile(gtfs_bytes) as gtfs_zip:
         feed_info_df = polars.read_csv(
-            gtfs_zip.read("feed_info.txt"), dtypes=feed_info_schema, columns=list(feed_info_schema.keys())
+            gtfs_zip.read("feed_info.txt"), schema_overrides=feed_info_schema, columns=list(feed_info_schema.keys())
         )
 
     # Extract creation_timestamp from feed_version text
@@ -259,7 +259,7 @@ def process_feed_info(gtfs_bytes: BytesIO) -> Tuple[datetime.date, datetime.date
     feed_info_df.write_database(
         table_name=f"{DB_GTFS_SCHEMA}.feed_info",
         connection=f"postgresql+psycopg2://{create_db_connection_string()}",
-        if_exists="append",
+        if_table_exists="append",
     )
 
     return (valid_start_date, valid_end_date)
@@ -280,7 +280,7 @@ def load_gtfs_table(
 
     with zipfile.ZipFile(gtfs_bytes) as gtfs_zip:
         table_df = polars.read_csv(
-            gtfs_zip.read(f"{table.table_name}.txt"), dtypes=table.schema, columns=list(table.schema.keys())
+            gtfs_zip.read(f"{table.table_name}.txt"), schema_overrides=table.schema, columns=list(table.schema.keys())
         )
 
     # change string date fields to datetime.date
@@ -306,7 +306,7 @@ def load_gtfs_table(
     table_df.write_database(
         table_name=new_table_name,
         connection=f"postgresql+psycopg2://{create_db_connection_string()}",
-        if_exists="append",
+        if_table_exists="append",
     )
 
     primary_key = ""

@@ -10,12 +10,12 @@ run_etl_jobs = 'research_etl.pipeline:run_jobs'
 
 [tool.poetry.dependencies]
 python = "^3.11"
-polars = "^0.19.15"
+polars = "^1.2.0"
 SQLAlchemy = "^2.0.23"
 psycopg2 = "^2.9.9"
 boto3 = "^1.29.4"
-pandas = "^2.1.3"
-pyarrow = "^14.0.1"
+pandas = "^2.2.2"
+pyarrow = "^17.0.0"
 paramiko = "^3.4.0"
 
 [tool.poetry.group.dev.dependencies]
