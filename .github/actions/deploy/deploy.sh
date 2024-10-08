@@ -49,7 +49,7 @@ aws ecs register-task-definition \
 # inspired by https://doylew.medium.com/updating-aws-ecs-task-definition-and-scheduled-tasks-using-aws-cli-commands-through-deployment-jobs-7cef82262236
 
 # get the task definition arn for the new task definition
-if [ "${DO_UPDATE_EVENT_RULE}" == true ]; then
+if [ "${DO_UPDATE_EVENT_RULE}" = true ]; then
   newtaskdefarn="$(aws ecs describe-task-definition --task-definition "${ECS_TASK_DEF}" | \
       jq -r '.taskDefinition.taskDefinitionArn')"
   # get the events rule for triggering the scheduled task
