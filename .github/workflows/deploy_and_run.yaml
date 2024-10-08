@@ -1,0 +1,32 @@
+name: Deploy & Run
+
+on:
+  workflow_dispatch:
+    secrets:
+      AWS_ROLE_ARN:
+        description: AWS_ROLE_ARN
+        required: true
+
+jobs:
+  run_task:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Branch
+        uses: actions/checkout@v3
+      - name: Deploy App
+        uses: ./.github/actions/deploy
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          docker-repo: ${{ secrets.DOCKER_URI }}
+          env-name: prod
+          do-update-event-rule: false
+      - name: Run Ad-Hoc Task
+        uses: ./.github/actions/run_task
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          cluster: 'opmi-etl'
+          service: 'opmi-etl-prod'

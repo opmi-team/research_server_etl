@@ -14,6 +14,10 @@ inputs:
   role-to-assume:
     description: AWS_ROLE_ARN
     required: true
+  do-update-event-rule:
+    description: Update run event rule with new task?
+    required: true
+    default: 'true'
 
 runs:
   using: composite
@@ -37,4 +41,5 @@ runs:
         ECS_SERVICE: opmi-etl-${{ inputs.env-name }}
         ECS_TASK_DEF: opmi-etl-${{ inputs.env-name }}
         DOCKER_TAG: ${{ steps.build-push-ecr.outputs.docker-tag }}
+        DO_UPDATE_EVENT_RULE: ${{ inputs.do-update-event-rule }}
  
