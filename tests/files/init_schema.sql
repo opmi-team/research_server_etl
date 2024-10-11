@@ -968,6 +968,27 @@ CREATE TABLE surveys.dashboard_survey_questions_archive (
     archive_time timestamp with time zone
 );
 
+CREATE TABLE surveys.csat (
+                survey_date DATE,
+                survey_name character varying(255),
+                question_description TEXT,
+                response_total INTEGER,
+                response_1_text character varying(255),
+                response_1_percent FLOAT,
+                response_2_text character varying(255),
+                response_2_percent FLOAT,
+                response_3_text character varying(255),
+                response_3_percent FLOAT,
+                response_4_text character varying(255),
+                response_4_percent FLOAT,
+                response_5_text character varying(255),
+                response_5_percent FLOAT,
+                response_6_text character varying(255),
+                response_6_percent FLOAT,
+                response_7_text character varying(255),
+                response_7_percent FLOAT
+);
+
 -- ****************************************** --
 -- END INIT GITHUB ACTIONS SCHEMA --
 -- ****************************************** --
